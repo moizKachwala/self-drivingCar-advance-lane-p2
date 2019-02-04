@@ -19,12 +19,13 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ./examples/undistort_output.png "Undistorted"
-[image2]: ./test_images/test1.jpg "Road Transformed"
-[image3]: ./examples/binary_combo_example.jpg "Binary Example"
-[image4]: ./examples/warped_straight_lines.jpg "Warp Example"
-[image5]: ./examples/color_fit_lines.jpg "Fit Visual"
-[image6]: ./examples/example_output.jpg "Output"
+[image1]: ./output_images/undistorted_chess_image.png "Undistorted"
+[image2]: ./output_images/undistorted_car_image.png "Road Transformed"
+[image3]: ./output_images/sobelx_color_thresh_image.png "Binary Example"
+[image4]: ./output_images/bird_eye_view.png "Warp Example"
+[image5]: ./output_images/sliding_window.png "Sliding window"
+[image6]: ./output_images/sliding_added_weight.png "Fit Visual"
+[image7]: ./output_images/final_image.png "Output"
 [video1]: ./project_video.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
@@ -43,7 +44,7 @@ You're reading it!
 
 #### 1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
 
-The code for this step is contained in the first code cell of the IPython notebook located in "./examples/example.ipynb" (or in lines # through # of the file called `some_file.py`).  
+The code for this step is contained in the lane_detection_v1.ipynb file on line #3. It has the calibrate_camera function  which calibrates the camera.
 
 I start by preparing "object points", which will be the (x, y, z) coordinates of the chessboard corners in the world. Here I am assuming the chessboard is fixed on the (x, y) plane at z=0, such that the object points are the same for each calibration image.  Thus, `objp` is just a replicated array of coordinates, and `objpoints` will be appended with a copy of it every time I successfully detect all chessboard corners in a test image.  `imgpoints` will be appended with the (x, y) pixel position of each of the corners in the image plane with each successful chessboard detection.  
 
@@ -60,35 +61,27 @@ To demonstrate this step, I will describe how I apply the distortion correction 
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # 4).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
 
 ![alt text][image3]
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+The code for my perspective transform includes a function called `image_warper()`, which appears in lines 7 of python book. The `image_warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I choose the hardcode the source and destination points in the following manner:
 
 ```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
+src_points = np.float32([[250, 680],
+        [1050, 680],
+        [590, 455],
+        [695, 455]
+    ])
+
+dst_points = np.float32([[320, 680],
+        [950, 680],
+        [320, 0],
+        [950, 0]
+    ])
 ```
-
-This resulted in the following source and destination points:
-
-| Source        | Destination   | 
-|:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
 
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
@@ -96,19 +89,42 @@ I verified that my perspective transform was working as expected by drawing the 
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+Then identifined lane-line pixels and fit their position with find_lane_pixels() method. This method takes in the binary warped image and fit their position with a polynomial with sliding window.
+
+The steps that I did were.
+
+    1. Take the histogram for the bottom half of the image.
+    2. Then find the pick of the left and right halves of the histogram.
+    3. Then I choose some hyperparameters with nwindows = 9
+    4. Then set the height of windows based on the nwindows and size of the image.
+    5. Then identify the x and y position of all activated pixels in the image.
+    6. Then step through all the windows one by one and identify the window boundries in x and y and extract the left and right line pixel positions.
+    7. Then I fit the polynomial with the help of the pixels that we found for the lane lines.
+    8. Then I fit the second order polynomial to each using np.polyfit.
+    
 
 ![alt text][image5]
 
+Then I added the warped blank image to the image and drawn the layer in the image.
+
+![alt text][image6]
+
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+I did this in lines # through #13 in my code. For this I defined the conversions in x and y from mixels space to meters.
+
+```
+ym_per_pix = 30/720 # meters per pixel in y dimension
+xm_per_pix = 3.7/650 # meters per pixel in x dimension
+```
+
+Then I fit the polynomial to x and y in world space and then calculate the Radius of the curvature.
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+I implemented this step in lines #14 in my code with proces_image method, which combines the whole pipeline and here is an example of my result on a test image:
 
-![alt text][image6]
+![alt text][image7]
 
 ---
 
@@ -124,4 +140,10 @@ Here's a [link to my video result](./project_video.mp4)
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+* There are portions of the image where the lane lines are little off, they needs to be investigated and fix.
+
+* The pipeline doesn't work on the challenge videos, and I think the reason is the curvature of the two lane lines are not compared.
+
+* The window boxes that are used from botom to top, are influenced by shadows, e.g from the bottom it starts going right but as it approches to the top, the sliding boxes have moved to left.
+
+* Working on the thresholding needs more work in case of shadows.
